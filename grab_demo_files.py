@@ -128,7 +128,7 @@ def main(args):
         actual_download_link = follow_redir_to_download(f"https://www.hltv.org{link}")
         print(f"Downloading file {index + 1} of {len(download_links)}: {actual_download_link}")
         if actual_download_link:
-            download_file(actual_download_link, f"{destination_path}/replay_{index}.rar")
+            download_file(actual_download_link, f"{destination_path}/{actual_download_link.split('/')[-1]}")
 
     files = get_rar_files(destination_path)
 
