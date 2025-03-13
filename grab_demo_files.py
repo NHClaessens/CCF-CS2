@@ -1,4 +1,6 @@
+from email import header
 import random
+import shutil
 from time import sleep
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -9,6 +11,8 @@ import patoolib
 import argparse
 from requests import get
 import subprocess
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 
 team_url = "https://www.hltv.org/stats/teams/matches/9565/vitality?startDate=2024-12-13&endDate=2025-03-13&rankingFilter=Top20"
@@ -26,47 +30,58 @@ def get_rar_files(path):
     
     return rar_files
 
-def download_file(url, file_path):
-    reply = get(url, stream=True)
-    with open(file_path, 'wb') as file:
-        for chunk in reply.iter_content(chunk_size=1024): 
-            if chunk:
-                file.write(chunk)
+def wait_for_after_content(driver, element_locator, expected_content, timeout=10):
+    # Wait for the element to be present in the DOM
+    element = WebDriverWait(driver, timeout).until(
+        EC.presence_of_element_located(element_locator)
+    )
+    
+    # Wait until the ::after content matches the expected value
+    WebDriverWait(driver, timeout).until(
+        lambda driver: driver.execute_script("""
+            var element = arguments[0];
+            var styles = window.getComputedStyle(element, '::after');
+            return styles.getPropertyValue('content') === arguments[1];
+        """, element, expected_content)
+    )
+    print(f"::after content is now: '{expected_content}'")
 
-def follow_redir_to_download(path: str):
-    curl_command = [
-        'curl', path,
-        '-H', 'accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-        '-H', 'accept-language: en-GB,en-US;q=0.9,en;q=0.8',
-        '-H', 'priority: u=0, i',
-        '-H', 'referer: https://www.hltv.org/matches/2380059/vitality-vs-mouz-esl-pro-league-season-21',
-        '-H', 'sec-ch-ua: "Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"',
-        '-H', 'sec-ch-ua-mobile: ?0',
-        '-H', 'sec-ch-ua-platform: "macOS"',
-        '-H', 'sec-fetch-dest: document',
-        '-H', 'sec-fetch-mode: navigate',
-        '-H', 'sec-fetch-site: same-origin',
-        '-H', 'upgrade-insecure-requests: 1',
-        '-H', 'user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
-        '-i',  # This flag tells curl to include the response headers
-        '-L',  # Follow redirects
-        '-v'  # Show verbose output to get details of the redirect (if any)
-    ]
+def monitor_folder(folder_path):
+    # Ensure the folder exists
+    if not os.path.exists(folder_path):
+        print("Folder not found")
+        return
 
-    # Run the cURL command and capture the output
-    process = subprocess.Popen(curl_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = process.communicate()
+    # Dictionary to store the file size for each file in the folder
+    file_sizes = {}
 
-    # Decode the output to get the response and error (if any)
-    stdout = stdout.decode('utf-8')
-    stderr = stderr.decode('utf-8')
+    # Initialize the file_sizes dictionary with the current sizes of files
+    for file_name in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, file_name)
+        if os.path.isfile(file_path):  # Only monitor files, not subdirectories
+            file_sizes[file_path] = os.path.getsize(file_path)
 
-    for line in stdout.splitlines():
-        if line.lower().startswith('location:'):
-            redirect_url = line.split(' ', 1)[1].strip()
-            print("Redirect URL:", redirect_url)
-            return redirect_url
-    return None
+    # Monitor files in the folder
+    while True:
+        all_files_stable = True  # Flag to track if all files have stabilized
+        for file_path in file_sizes.keys():
+            if not os.path.exists(file_path):
+                continue
+            size1 = os.path.getsize(file_path)
+            print(f"{file_path}: {size1}")
+            sleep(1)
+            if not os.path.exists(file_path):
+                continue
+            size2 = os.path.getsize(file_path)
+
+            # If the size of the file has not changed, it's considered stable
+            if size1 != size2:
+                all_files_stable = False
+
+        # Exit the loop when all files are stable
+        if all_files_stable:
+            print("All files have finished downloading.")
+            break
 
 def main(args):
     print("Starting web driver...")
@@ -102,6 +117,8 @@ def main(args):
         if index > args.count: 
             break
         
+        # Downloads include all maps in a match, so filter rows that are from the same session
+        # so as to not download duplicate files
         match_link = row.find_element(By.TAG_NAME, "a").get_attribute("href")
         match_page_links.append(match_link)
         print(f"{index - 1}: {match_link}")
@@ -112,32 +129,32 @@ def main(args):
         match_detail_link = driver.find_element(By.CLASS_NAME, "match-page-link").get_attribute("href")
         match_detail_links.append(match_detail_link)
 
-    download_links = []
     for index, link in enumerate(match_detail_links):
         driver.uc_open_with_reconnect(link, reconnect_time=6)
         download_button = driver.find_element(By.CLASS_NAME, "stream-box")
         print(f"{index}: download at: {download_button.get_attribute("data-demo-link")}")
-        download_links.append(download_button.get_attribute("data-demo-link"))
-        # download_button.click()
 
+        download_button.click()
+        wait_for_after_content(driver, (By.CLASS_NAME, 'vod-loading-status'), '"Download starting..."')
+        print("Wait for download to start")
+        sleep(3)
+        monitor_folder('./downloaded_files')
+
+
+    # TODO: time is lower by 1 hour
     destination_path = f'./replays_{strftime("%Y-%m-%d_%H-%M-%S", gmtime())}'
     os.mkdir(destination_path)
 
-    # Link we want is: https://r2-demos.hltv.org/demos/112914/esl-pro-league-season-21-vitality-vs-mouz-bo3-Ko5VJMvyF1OsCx2TbVU9pb.rar
-    for index, link in enumerate(download_links):
-        actual_download_link = follow_redir_to_download(f"https://www.hltv.org{link}")
-        print(f"Downloading file {index + 1} of {len(download_links)}: {actual_download_link}")
-        if actual_download_link:
-            download_file(actual_download_link, f"{destination_path}/{actual_download_link.split('/')[-1]}")
-
-    files = get_rar_files(destination_path)
+    files = get_rar_files('./downloaded_files')
 
     for file in files:
         name = file.split('/')[-1]
 
         if args.extract:
             patoolib.extract_archive(file, program='unrar', outdir=f'./{destination_path}/{name.replace('.rar', '')}')
-            os.remove(file)
+        else:
+            shutil.move(file, f'./{destination_path}/{name}') 
+        os.remove(file)
 
     input("Press any key to quit...")
 
