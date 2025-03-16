@@ -1,17 +1,20 @@
 import os
+from typing import List
 
-def get_files_with_extension(path, extension):
+def get_files_with_extension(path, extension) -> List[str]:
     if not extension.startswith('.'):
         extension = "." + extension
 
-    files = []
+    results = []
     for root, dirs, files in os.walk(path):
         for file in files:
             if file.endswith(extension):
-                files.append(os.path.normpath(os.path.join(root, file)))
+                print(f"root: {root}, file: {file}")
+                results.append(os.path.normpath(os.path.join(root, file)))
     
-    return files
+    return results
 
+import pandas as pd
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -65,3 +68,23 @@ def monitor_folder_for_changes(folder_path):
         # Exit the loop when all files are stable
         if all_files_stable:
             break
+
+from demoparser2 import DemoParser
+from progress.bar import Bar
+def parse_demos_from_folder(folder_path) -> List[tuple[str, DemoParser]]:
+    # Find all .dem files in the folder
+    demo_files = get_files_with_extension(folder_path, '.dem')
+    print(f"Found {len(demo_files)} demo files")
+
+    parsers = []
+
+    with Bar("Parsing demo files", max=len(demo_files)) as bar:
+        for demo_file in demo_files:
+            name = os.path.basename(demo_file)
+            parsers.append((name, DemoParser(demo_file)))
+            bar.next()
+    
+    return parsers
+
+def parse_players_from_ticks(ticks: pd.DataFrame) -> pd.DataFrame:
+    return ticks.drop_duplicates(subset=['steamid', 'name'])[['steamid', 'name']]

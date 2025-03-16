@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from typing import List
 from demoparser2 import DemoParser
+import util
 
 all_fields = [
     'X',
@@ -57,17 +58,17 @@ def get_statistics(name, values, all_stats = False):
     
 
 # Function to recursively search for .dem files
-def find_dem_files(folder_path):
-    replays = []
-    filenames = []
-    for root, dirs, files in os.walk(folder_path):
-        for file in files:
-            if file.endswith('.dem'):
-                replays.append(os.path.join(root, file))
-                filenames.append(file)
+# def find_dem_files(folder_path):
+#     replays = []
+#     filenames = []
+#     for root, dirs, files in os.walk(folder_path):
+#         for file in files:
+#             if file.endswith('.dem'):
+#                 replays.append(os.path.join(root, file))
+#                 filenames.append(file)
 
-    print(f"Found {len(filenames)} replays: {filenames}")
-    return replays
+#     print(f"Found {len(filenames)} replays: {filenames}")
+#     return replays
 
 # Parse the demo and extract the requested statistics
 def parse_replays(replays, player_usernames, field_names: List[str], event_names: List[str], voice: bool):
@@ -196,7 +197,7 @@ def main():
         args.fields = all_fields
 
     # Find all .dem files
-    replays = find_dem_files(args.folder)
+    replays = util.get_files_with_extension(args.folder, 'dem')
 
     # Parse replays and extract requested statistics
     player_data = parse_replays(replays, args.players, args.fields, args.events, args.voice)
