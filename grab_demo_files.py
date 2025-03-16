@@ -1,4 +1,3 @@
-from email import header
 import random
 import shutil
 from time import sleep
@@ -10,10 +9,10 @@ from time import gmtime, strftime
 import patoolib
 import argparse
 from requests import get
-import subprocess
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.select import Select
+from progress.bar import Bar
 
 
 team_url = "https://www.hltv.org/stats/teams/matches/9565/vitality?startDate=2024-12-13&endDate=2025-03-13&rankingFilter=Top20"
@@ -110,47 +109,53 @@ def main(args):
 
     previous_color = None
     match_page_links = []
-    for index, row in enumerate(match_rows):
-        bg_color = row.value_of_css_property("background-color")
+
+    with Bar("Finding matches", max=args.count) as bar:
+        for index, row in enumerate(match_rows):
+            bg_color = row.value_of_css_property("background-color")
 
 
-        if previous_color is None or bg_color == previous_color:
-            # Continue current group
-            current_group.append(row)
-        else:
-            # Start a new group and save the previous one
-            grouped_matches.append(current_group)
+            if previous_color is None or bg_color == previous_color:
+                # Continue current group
+                current_group.append(row)
+            else:
+                # Start a new group and save the previous one
+                grouped_matches.append(current_group)
 
-            columns = current_group[0].find_elements(By.TAG_NAME, "td")
-            date = columns[0].text
-            opponent = columns[3].text
-            match_page_link = current_group[0].find_element(By.TAG_NAME, "a").get_attribute("href")
-            match_page_links.append(match_page_link)
-            print(f"Match {len(match_page_links)}: {date} vs {opponent}, {len(current_group)} rounds: {match_page_link}")
+                columns = current_group[0].find_elements(By.TAG_NAME, "td")
+                date = columns[0].text
+                opponent = columns[3].text
+                match_page_link = current_group[0].find_element(By.TAG_NAME, "a").get_attribute("href")
+                match_page_links.append(match_page_link)
+                bar.next()
+                print(f"\tMatch {len(match_page_links)}: {date} vs {opponent}, {len(current_group)} rounds: {match_page_link}")
 
-            current_group = [row]
+                current_group = [row]
 
-        previous_color = bg_color
+            previous_color = bg_color
 
-        if len(match_page_links) >= args.count:
-            break
+            if len(match_page_links) >= args.count:
+                break
 
     match_detail_links = []
-    for index, link in enumerate(match_page_links):
-        driver.uc_open_with_reconnect(link, reconnect_time=6)
-        match_detail_link = driver.find_element(By.CLASS_NAME, "match-page-link").get_attribute("href")
-        match_detail_links.append(match_detail_link)
+    with Bar("Fetching match detail pages", max=len(match_page_links)) as bar:
+        for index, link in enumerate(match_page_links):
+            driver.uc_open_with_reconnect(link, reconnect_time=6)
+            match_detail_link = driver.find_element(By.CLASS_NAME, "match-page-link").get_attribute("href")
+            match_detail_links.append(match_detail_link)
+            bar.next()
 
-    for index, link in enumerate(match_detail_links):
-        driver.uc_open_with_reconnect(link, reconnect_time=6)
-        download_button = driver.find_element(By.CLASS_NAME, "stream-box")
-        print(f"{index}: download at: {download_button.get_attribute("data-demo-link")}")
+    with Bar("Downloading demos", max=len(match_detail_links)) as bar:
+        for index, link in enumerate(match_detail_links):
+            driver.uc_open_with_reconnect(link, reconnect_time=6)
+            download_button = driver.find_element(By.CLASS_NAME, "stream-box")
 
-        download_button.click()
-        wait_for_after_content(driver, (By.CLASS_NAME, 'vod-loading-status'), '"Download starting..."')
-        print("Wait for download to start")
-        sleep(3)
-        monitor_folder('./downloaded_files')
+            download_button.click()
+            wait_for_after_content(driver, (By.CLASS_NAME, 'vod-loading-status'), '"Download starting..."')
+            sleep(3)
+            monitor_folder('./downloaded_files')
+            sleep(1)
+            bar.next()
 
 
     # TODO: time is lower by 1 hour
