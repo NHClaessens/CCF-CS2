@@ -1,85 +1,17 @@
-import random
-import shutil
 from time import sleep
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from seleniumbase import Driver
 import os
-from time import gmtime, strftime
+from time import localtime, strftime
 import patoolib
 import argparse
 from requests import get
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+
 from selenium.webdriver.support.select import Select
 from progress.bar import Bar
+import util
 
-
-team_url = "https://www.hltv.org/stats/teams/matches/9565/vitality?startDate=2024-12-13&endDate=2025-03-13&rankingFilter=Top20"
-
-def wait():
-    return
-    sleep(random.randint(5, 15) / 10)
-
-def get_rar_files(path):
-    rar_files = []
-    for root, dirs, files in os.walk(path):
-        for file in files:
-            if file.endswith('.rar'):
-                rar_files.append(os.path.normpath(os.path.join(root, file)))
-    
-    return rar_files
-
-def wait_for_after_content(driver, element_locator, expected_content, timeout=10):
-    # Wait for the element to be present in the DOM
-    element = WebDriverWait(driver, timeout).until(
-        EC.presence_of_element_located(element_locator)
-    )
-    
-    # Wait until the ::after content matches the expected value
-    WebDriverWait(driver, timeout).until(
-        lambda driver: driver.execute_script("""
-            var element = arguments[0];
-            var styles = window.getComputedStyle(element, '::after');
-            return styles.getPropertyValue('content') === arguments[1];
-        """, element, expected_content)
-    )
-    print(f"::after content is now: '{expected_content}'")
-
-def monitor_folder(folder_path):
-    # Ensure the folder exists
-    if not os.path.exists(folder_path):
-        print("Folder not found")
-        return
-
-    # Dictionary to store the file size for each file in the folder
-    file_sizes = {}
-
-    # Initialize the file_sizes dictionary with the current sizes of files
-    for file_name in os.listdir(folder_path):
-        file_path = os.path.join(folder_path, file_name)
-        if os.path.isfile(file_path):  # Only monitor files, not subdirectories
-            file_sizes[file_path] = os.path.getsize(file_path)
-
-    # Monitor files in the folder
-    while True:
-        all_files_stable = True  # Flag to track if all files have stabilized
-        for file_path in file_sizes.keys():
-            if not os.path.exists(file_path):
-                continue
-            size1 = os.path.getsize(file_path)
-            sleep(1)
-            if not os.path.exists(file_path):
-                continue
-            size2 = os.path.getsize(file_path)
-
-            # If the size of the file has not changed, it's considered stable
-            if size1 != size2:
-                all_files_stable = False
-
-        # Exit the loop when all files are stable
-        if all_files_stable:
-            break
 
 def main(args):
     print("Starting web driver...")
@@ -88,12 +20,11 @@ def main(args):
     options.add_experimental_option('useAutomationExtension', False)
     driver : webdriver.Chrome = Driver(uc=True, headless=False)
 
-    driver.uc_open_with_reconnect(team_url, reconnect_time=6)
+    driver.uc_open_with_reconnect(args.url, reconnect_time=6)
 
     print(driver.execute_script("return navigator.userAgent"))
 
     # Decline optional cookies
-    wait()
     driver.find_element(By.ID, "CybotCookiebotDialogBodyButtonDecline").click()
 
     time_filter_element = Select(driver.find_element(By.CLASS_NAME, "stats-sub-navigation-simple-filter-time"))
@@ -149,18 +80,18 @@ def main(args):
             download_button = driver.find_element(By.CLASS_NAME, "stream-box")
 
             download_button.click()
-            wait_for_after_content(driver, (By.CLASS_NAME, 'vod-loading-status'), '"Download starting..."')
+            util.wait_for_after_content(driver, (By.CLASS_NAME, 'vod-loading-status'), '"Download starting..."')
             sleep(3)
-            monitor_folder('./downloaded_files')
+            util.monitor_folder_for_changes('./downloaded_files')
             sleep(1)
             bar.next()
 
 
     # TODO: time is lower by 1 hour
-    destination_path = os.path.normpath(f'./replays_{strftime("%Y-%m-%d_%H-%M-%S", gmtime())}')
+    destination_path = os.path.normpath(f'./replays_{strftime("%Y-%m-%d_%H-%M-%S", localtime())}')
     os.mkdir(destination_path)
 
-    files = get_rar_files('./downloaded_files')
+    files = util.get_files_with_extension('./downloaded_files', 'rar')
 
     with Bar("Extracting files", max=len(files)) as bar:
         for file in files:
