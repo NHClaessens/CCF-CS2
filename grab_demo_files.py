@@ -26,7 +26,7 @@ def get_rar_files(path):
     for root, dirs, files in os.walk(path):
         for file in files:
             if file.endswith('.rar'):
-                rar_files.append(os.path.join(root, file))
+                rar_files.append(os.path.normpath(os.path.join(root, file)))
     
     return rar_files
 
@@ -68,7 +68,6 @@ def monitor_folder(folder_path):
             if not os.path.exists(file_path):
                 continue
             size1 = os.path.getsize(file_path)
-            print(f"{file_path}: {size1}")
             sleep(1)
             if not os.path.exists(file_path):
                 continue
@@ -80,7 +79,6 @@ def monitor_folder(folder_path):
 
         # Exit the loop when all files are stable
         if all_files_stable:
-            print("All files have finished downloading.")
             break
 
 def main(args):
@@ -159,27 +157,29 @@ def main(args):
 
 
     # TODO: time is lower by 1 hour
-    destination_path = f'./replays_{strftime("%Y-%m-%d_%H-%M-%S", gmtime())}'
+    destination_path = os.path.normpath(f'./replays_{strftime("%Y-%m-%d_%H-%M-%S", gmtime())}')
     os.mkdir(destination_path)
 
     files = get_rar_files('./downloaded_files')
 
-    for file in files:
-        name = file.split('/')[-1]
+    with Bar("Extracting files", max=len(files)) as bar:
+        for file in files:
+            name = file.split('downloaded_files')[-1]
+            output_dir = os.path.normpath(f'{destination_path}{name.replace(".rar", "")}')
 
-        if args.extract:
-            patoolib.extract_archive(file, program='unrar', outdir=f'./{destination_path}/{name.replace('.rar', '')}')
-        else:
-            shutil.move(file, f'./{destination_path}/{name}') 
-        os.remove(file)
+            patoolib.extract_archive(file, program='unrar', outdir=output_dir)
+            if(args.delete):
+                os.remove(file)
+            bar.next()
+    
+    driver.close()
 
-    input("Press any key to quit...")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Automatically grab demo the X most recent demo files from a given team')
     parser.add_argument('url', type=str, help='Path to the matches page of the team')
     parser.add_argument('-c', '--count', type=int, required=True, help='The number of replay files to download')
-    parser.add_argument('-e', '--extract', action='store_true', help='Extract the rar files')
+    parser.add_argument('-d', '--delete', action='store_true', help='Delete the .rar files after extracting')
 
     args = parser.parse_args()
     main(args)
