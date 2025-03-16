@@ -6,8 +6,6 @@ import os
 from time import localtime, strftime
 import patoolib
 import argparse
-from requests import get
-
 from selenium.webdriver.support.select import Select
 from progress.bar import Bar
 import util
@@ -75,7 +73,7 @@ def main(args):
             bar.next()
 
     with Bar("Downloading demos", max=len(match_detail_links)) as bar:
-        for index, link in enumerate(match_detail_links):
+        for link in match_detail_links:
             driver.uc_open_with_reconnect(link, reconnect_time=6)
             download_button = driver.find_element(By.CLASS_NAME, "stream-box")
 
@@ -86,8 +84,6 @@ def main(args):
             sleep(1)
             bar.next()
 
-
-    # TODO: time is lower by 1 hour
     destination_path = os.path.normpath(f'./replays_{strftime("%Y-%m-%d_%H-%M-%S", localtime())}')
     os.mkdir(destination_path)
 
