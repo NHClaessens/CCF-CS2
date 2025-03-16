@@ -13,6 +13,7 @@ from requests import get
 import subprocess
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.select import Select
 
 
 team_url = "https://www.hltv.org/stats/teams/matches/9565/vitality?startDate=2024-12-13&endDate=2025-03-13&rankingFilter=Top20"
@@ -98,30 +99,41 @@ def main(args):
     wait()
     driver.find_element(By.ID, "CybotCookiebotDialogBodyButtonDecline").click()
 
-    wait()
-    time_filter_element = driver.find_element(By.CLASS_NAME, "stats-sub-navigation-simple-filter-time")
-    time_filter_element.click()
-    wait()
+    time_filter_element = Select(driver.find_element(By.CLASS_NAME, "stats-sub-navigation-simple-filter-time"))
+    time_filter_element.select_by_visible_text("All time")
 
-    time_filter_element.find_elements(By.CSS_SELECTOR, "*")[0].click()
-
-    matches_table = driver.find_element(By.TAG_NAME, "table")
+    matches_table = driver.find_element(By.TAG_NAME, "tbody")
     match_rows = matches_table.find_elements(By.TAG_NAME, "tr")
 
+    grouped_matches = []
+    current_group = []
+
+    previous_color = None
     match_page_links = []
     for index, row in enumerate(match_rows):
-        # Skip header row
-        if index == 0:
-            continue
+        bg_color = row.value_of_css_property("background-color")
 
-        if index > args.count: 
+
+        if previous_color is None or bg_color == previous_color:
+            # Continue current group
+            current_group.append(row)
+        else:
+            # Start a new group and save the previous one
+            grouped_matches.append(current_group)
+
+            columns = current_group[0].find_elements(By.TAG_NAME, "td")
+            date = columns[0].text
+            opponent = columns[3].text
+            match_page_link = current_group[0].find_element(By.TAG_NAME, "a").get_attribute("href")
+            match_page_links.append(match_page_link)
+            print(f"Match {len(match_page_links)}: {date} vs {opponent}, {len(current_group)} rounds: {match_page_link}")
+
+            current_group = [row]
+
+        previous_color = bg_color
+
+        if len(match_page_links) >= args.count:
             break
-        
-        # Downloads include all maps in a match, so filter rows that are from the same session
-        # so as to not download duplicate files
-        match_link = row.find_element(By.TAG_NAME, "a").get_attribute("href")
-        match_page_links.append(match_link)
-        print(f"{index - 1}: {match_link}")
 
     match_detail_links = []
     for index, link in enumerate(match_page_links):
