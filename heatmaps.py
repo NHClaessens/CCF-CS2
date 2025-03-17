@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import seaborn as sns
 import pandas as pd
-from progress.bar import Bar
+from tqdm import tqdm
 
 def main():
     parser = argparse.ArgumentParser(description='Generate heatmaps of player locations')
@@ -15,33 +15,46 @@ def main():
     parser.add_argument('--show', action='store_true', help="Show the plots in an interactive window")
     parser.add_argument('--save', action='store_true', help="Save the plots to disk")
     parser.add_argument('--map', type=str, help="Only create heatmaps for this map")
+    parser.add_argument('--min_vel', type=float, help="The minimum velocity to show in the heatmap. Ticks with velocity lower than this will not be shown")
 
     args = parser.parse_args()
 
-    ticks, _ = merger.merge_demo_files(args.folder, ['X', 'Y', 'Z'], True)
-    players = util.parse_players_from_ticks(ticks)
-    maps = util.parse_maps_from_ticks(ticks)
+    ticks, _ = merger.merge_demo_files(args.folder, ['X', 'Y', 'Z', 'velocity'], True)
+    matches = util.parse_matches_from_ticks(ticks)
 
-    with Bar("Generating heatmaps", max=(len(players) * len(maps)), ) as bar:
-        for _, data in maps.iterrows():
-            map_name = data['map']
+    # TODO: filter based on walking or standing still
+    # TODO: Allow separating per match
 
-            if args.map and map_name != args.map:
-                bar.next()
+    print("Generating heatmaps")
+    for _, data in tqdm(matches.iterrows(), desc="Matches", total=len(matches)):
+        match = data['match']
+        
+        match_df = ticks[ticks['match'] == match]
+        players = util.parse_players_from_ticks(match_df)
+        maps = util.parse_maps_from_ticks(match_df)
+        map_name = maps['map'].tolist()[0]
+
+        print(f"Match: {match}, map: {map_name}, players: {players['name'].tolist()}")
+        
+        for _, data in tqdm(players.iterrows(), desc="Players", total=len(players)):
+            name= data['name']
+            if len(args.players) > 0 and name not in args.players:
                 continue
 
-            for _, data in players.iterrows():
-                name= data['name']
-                if len(args.players) > 0 and name not in args.players:
-                    bar.next()
-                    continue
-                generate_heatmap(name, map_name, ticks)
-                bar.next()
+            generate_heatmap(
+                player_name=name, 
+                map_name=map_name, 
+                match_name=match,
+                df=match_df, 
+                args=args, 
+            )
 
-def generate_heatmap(player_name: str, map_name: str, df: pd.DataFrame, show = False, store = True):
+def generate_heatmap(player_name: str, map_name: str, match_name: str, df: pd.DataFrame, args, override_filename = None):
     # Filter data for the given map and player
     map_df = df[df["map"] == map_name]
     player_df = map_df[map_df["name"] == player_name]
+    if args.min_vel:
+        player_df = player_df[player_df['velocity'] > args.min_vel]
 
     # Create figure and axis
     plt.figure(figsize=(10, 8))
@@ -77,11 +90,11 @@ def generate_heatmap(player_name: str, map_name: str, df: pd.DataFrame, show = F
     plt.grid(True)
 
     # Save the plot
-    if show:
+    if args.show:
         plt.show()
-    if store:
-        os.makedirs(f"heatmaps/{map_name}", exist_ok=True)
-        plt.savefig(f"heatmaps/{map_name}/{player_name}.png")
+    if args.save:
+        os.makedirs(f"heatmaps/{match_name}", exist_ok=True)
+        plt.savefig(f"heatmaps/{match_name}/{override_filename if override_filename else player_name}.png")
 
 
 
