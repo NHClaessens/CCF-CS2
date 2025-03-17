@@ -14,6 +14,7 @@ def main():
     parser.add_argument('--players', type=str, nargs='*', default=[], help='List of player usernames to filter (empty for all players)')
     parser.add_argument('--show', action='store_true', help="Show the plots in an interactive window")
     parser.add_argument('--save', action='store_true', help="Save the plots to disk")
+    parser.add_argument('--map', type=str, help="Only create heatmaps for this map")
 
     args = parser.parse_args()
 
@@ -24,8 +25,16 @@ def main():
     with Bar("Generating heatmaps", max=(len(players) * len(maps)), ) as bar:
         for _, data in maps.iterrows():
             map_name = data['map']
+
+            if args.map and map_name != args.map:
+                bar.next()
+                continue
+
             for _, data in players.iterrows():
                 name= data['name']
+                if len(args.players) > 0 and name not in args.players:
+                    bar.next()
+                    continue
                 generate_heatmap(name, map_name, ticks)
                 bar.next()
 
