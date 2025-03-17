@@ -23,9 +23,9 @@ def main():
     matches = util.parse_matches_from_ticks(ticks)
 
     # TODO: filter based on walking or standing still
-    # TODO: Allow separating per match
 
     print("Generating heatmaps")
+    # Generate heatmaps per round
     for _, data in tqdm(matches.iterrows(), desc="Matches", total=len(matches)):
         match = data['match']
         
@@ -36,34 +36,45 @@ def main():
 
         print(f"Match: {match}, map: {map_name}, players: {players['name'].tolist()}")
         
-        for _, data in tqdm(players.iterrows(), desc="Players", total=len(players)):
-            name= data['name']
-            if len(args.players) > 0 and name not in args.players:
+        # Generate per player
+        for _, data in tqdm(players.iterrows(), desc="Players", total=len(players),):
+            player_name = data['name']
+            if len(args.players) > 0 and player_name not in args.players:
                 continue
 
+            map_df = match_df[match_df["map"] == map_name]
+            player_df = map_df[map_df["name"] == player_name]
+
+            if args.min_vel:
+                player_df = player_df[player_df['velocity'] > args.min_vel]
+
             generate_heatmap(
-                player_name=name, 
-                map_name=map_name, 
-                match_name=match,
-                df=match_df, 
-                args=args, 
+                df=player_df, 
+                map_name= map_name,
+                title=f"Heatmap of {player_name}'s Positions",
+                save_path=match,
+                save_filename=player_name,
             )
+        
+        # Generate average heatmap for match
+        generate_heatmap(
+            df=match_df, 
+            map_name= map_name,
+            title="Heatmap of everyone's Positions",
+            save_path=match,
+            save_filename="average",
+        )
 
-def generate_heatmap(player_name: str, map_name: str, match_name: str, df: pd.DataFrame, args, override_filename = None):
-    # Filter data for the given map and player
-    map_df = df[df["map"] == map_name]
-    player_df = map_df[map_df["name"] == player_name]
-    if args.min_vel:
-        player_df = player_df[player_df['velocity'] > args.min_vel]
 
+def generate_heatmap(df: pd.DataFrame, map_name: str, title: str, save_path: str, save_filename: str):
     # Create figure and axis
     plt.figure(figsize=(10, 8))
     ax = plt.gca()
 
     # Plot the heatmap
     sns.kdeplot(
-        x=player_df["X"], 
-        y=player_df["Y"], 
+        x=df["X"], 
+        y=df["Y"], 
         fill=True, 
         cmap="magma", 
         thresh=0.05, 
@@ -84,17 +95,15 @@ def generate_heatmap(player_name: str, map_name: str, match_name: str, df: pd.Da
     
 
     # Titles and labels
-    plt.title(f"Heatmap of {player_name}'s Positions", fontsize=14)
+    plt.title(title, fontsize=14)
     plt.xlabel("X Coordinate")
     plt.ylabel("Y Coordinate")
     plt.grid(True)
 
-    # Save the plot
-    if args.show:
-        plt.show()
-    if args.save:
-        os.makedirs(f"heatmaps/{match_name}", exist_ok=True)
-        plt.savefig(f"heatmaps/{match_name}/{override_filename if override_filename else player_name}.png")
+    # plt.show()
+    if save_path and save_filename:
+        os.makedirs(f"heatmaps/{save_path}", exist_ok=True)
+        plt.savefig(f"heatmaps/{save_path}/{save_filename}.png")
     plt.close()
 
 
