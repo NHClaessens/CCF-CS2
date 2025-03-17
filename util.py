@@ -101,6 +101,13 @@ def parse_maps_from_ticks(ticks: pd.DataFrame) -> pd.DataFrame:
 def parse_matches_from_ticks(ticks: pd.DataFrame) -> pd.DataFrame:
     return ticks.drop_duplicates(subset=['match',])[['match']]
 
+def file_path(path):
+    if os.path.isfile(path):
+        return path
+    else:
+        raise argparse.ArgumentTypeError(f"{path} is not a valid file")
+
+
 def dir_path(path):
     if os.path.isdir(path):
         return path
