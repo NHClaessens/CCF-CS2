@@ -1,6 +1,15 @@
 import os
 from typing import List
 
+import pandas as pd
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+from time import sleep
+
+from demoparser2 import DemoParser
+from progress.bar import Bar
+
 def get_files_with_extension(path, extension) -> List[str]:
     if not extension.startswith('.'):
         extension = "." + extension
@@ -14,9 +23,7 @@ def get_files_with_extension(path, extension) -> List[str]:
     
     return results
 
-import pandas as pd
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+
 
 def wait_for_after_content(driver, element_locator, expected_content, timeout=10):
     # Wait for the element to be present in the DOM
@@ -33,7 +40,6 @@ def wait_for_after_content(driver, element_locator, expected_content, timeout=10
         """, element, expected_content)
     )
 
-from time import sleep
 def monitor_folder_for_changes(folder_path):
     # Ensure the folder exists
     if not os.path.exists(folder_path):
@@ -69,8 +75,7 @@ def monitor_folder_for_changes(folder_path):
         if all_files_stable:
             break
 
-from demoparser2 import DemoParser
-from progress.bar import Bar
+
 def parse_demos_from_folder(folder_path) -> List[tuple[str, DemoParser]]:
     # Find all .dem files in the folder
     demo_files = get_files_with_extension(folder_path, '.dem')

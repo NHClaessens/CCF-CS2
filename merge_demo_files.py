@@ -1,13 +1,30 @@
+import pickle
+from time import strftime, localtime
+from typing import List
 import util
 import pandas as pd
 from progress.bar import Bar
 import matplotlib
-matplotlib.use("Agg")
+# matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import seaborn as sns
+import os
+import hashlib
 
-def merge_demo_files(folder_path, tick_props):
+def merge_demo_files(folder_path : str, tick_props : List[str], save):
+    # 6eb9ecd9559f291023f8d80ed4545eefc1f51ac8
+    input_hash = hashlib.sha1((folder_path + str(tick_props)).encode('utf-8')).hexdigest()
+    stored_name = f'./stored_dfs/{input_hash}'
+    if os.path.exists(stored_name):
+        print("Found stored data")
+        merged_ticks = pd.read_feather(stored_name+'/merged_ticks')
+        with open(stored_name+'/merged_events.pkl', 'rb') as file:
+            merged_events = pickle.load(file)
+            
+        
+        return merged_ticks, merged_events
+
     # Parse all demo files in the folder
     parsers = util.parse_demos_from_folder(folder_path)
 
@@ -27,6 +44,17 @@ def merge_demo_files(folder_path, tick_props):
           merged_ticks = pd.concat([merged_ticks, ticks], ignore_index=True)
           merged_events += events
           bar.next()
+
+    if save:
+        print(f"Saving at: {stored_name}")
+        os.makedirs(stored_name, exist_ok=True)
+        merged_ticks.to_feather(stored_name+'/merged_ticks')
+        with open(stored_name+'/merged_events.pkl', 'wb') as file:
+            pickle.dump(merged_events,  file)
+        with open(stored_name+'/info.txt', 'w') as file:
+            file.write(f"""Created on: {strftime("%Y-%m-%d_%H-%M-%S", localtime())}
+Tick props: {str(tick_props)}
+""")
   
     return merged_ticks, merged_events
 
@@ -72,5 +100,9 @@ def generate_heatmap(player_name: str, map_name: str, df: pd.DataFrame):
     plt.savefig(f"{player_name}_heatmap.png")
 
         
-ticks, events = merge_demo_files("./replays_2025-03-16_13-26-16\\esl-pro-league-season-21-vitality-vs-3dmax-bo3-SFueR4Yd1u5-bIhh5XKwOq", ['X', 'Y', 'Z'])
+ticks, events = merge_demo_files(
+    folder_path="./replays_2025-03-13_16-15-49/esl-pro-league-season-21-vitality-vs-3dmax-bo3-SFueR4Yd1u5-bIhh5XKwOq", 
+    tick_props=['X', 'Y', 'Z', 'health', 'score'],
+    save=True
+)
 generate_heatmap("ZywOo", "de_dust2", ticks)
