@@ -2,6 +2,7 @@ import os
 import csv
 import util
 import argparse
+import re
 
 def get_files(dir_src, dir_dest):
 	relevant_log = []
@@ -18,23 +19,37 @@ def get_files(dir_src, dir_dest):
 def extract_chat(file, dir_dest):
 	log_name = os.path.basename(file).split('/')[-1]
 	log_name = dir_dest + "/" + log_name.rsplit(".", 1)[0]
-	log_all = log_name + "_all.csv"
+	log_all = log_name + "_world.csv"
 	log_ct = log_name + "_ct.csv"
 	log_ter = log_name + "_ter.csv"
 	with open (file, "r") as lines:
 		for line in lines:
 			if "say" in line:
-				print(line)
-				write_to_file(log_all, line)
-			if "say_team" in line and "<ct>" in line:
-				write_to_file(log_ct, line)
+				pattern = r'L (\d{2}/\d{2}/\d{4} - \d{2}:\d{2}:\d{2}): "(.*?)<.*?><.*?><(.*?)>" say "(.*?)"'
+				match = re.match(pattern, line)
+				if match:
+					line = [match.group(1),match.group(2),match.group(3),match.group(4)]
+					write_to_file(log_all, line)
+			if "say_team" in line and "<CT>" in line:
+				pattern = r'L (\d{2}/\d{2}/\d{4} - \d{2}:\d{2}:\d{2}): "(.*?)<.*?><.*?><(.*?)>" say_team "(.*?)"'
+				match = re.match(pattern, line)
+				if match:
+					line = [match.group(1),match.group(2),match.group(3),match.group(4)]
+					write_to_file(log_ct, line)
 			if "say_team" in line and "<TERRORIST>" in line:
-				write_to_file(log_ter, line)
+				pattern = r'L (\d{2}/\d{2}/\d{4} - \d{2}:\d{2}:\d{2}): "(.*?)<.*?><.*?><(.*?)>" say_team "(.*?)"'
+				match = re.match(pattern, line)
+				if match:
+					line = [match.group(1),match.group(2),match.group(3),match.group(4)]
+					write_to_file(log_ter, line)
 
 def write_to_file(file, line):
+	file_exists = os.path.isfile(file)
 	with open(file, 'a+') as f:
 		writer = csv.writer(f)
-		writer.writerow([line])
+		if not file_exists:
+			writer.writerow(['Time', 'User', 'Team', 'Message'])
+		writer.writerow(line)
 
 
 
