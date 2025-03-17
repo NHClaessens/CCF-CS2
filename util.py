@@ -10,6 +10,8 @@ from time import sleep
 from demoparser2 import DemoParser
 from progress.bar import Bar
 
+import argparse
+
 def get_files_with_extension(path, extension) -> List[str]:
     if not extension.startswith('.'):
         extension = "." + extension
@@ -93,3 +95,12 @@ def parse_demos_from_folder(folder_path) -> List[tuple[str, DemoParser]]:
 
 def parse_players_from_ticks(ticks: pd.DataFrame) -> pd.DataFrame:
     return ticks.drop_duplicates(subset=['steamid', 'name'])[['steamid', 'name']]
+
+def parse_maps_from_ticks(ticks: pd.DataFrame) -> pd.DataFrame:
+    return ticks.drop_duplicates(subset=['map',])[['map']]
+
+def dir_path(path):
+    if os.path.isdir(path):
+        return path
+    else:
+        raise argparse.ArgumentTypeError(f"{path} is not a valid directory")

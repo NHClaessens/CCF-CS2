@@ -124,12 +124,6 @@ def parse_replays(replays, player_usernames, field_names: List[str], event_names
 
     return player_data
 
-def dir_path(path):
-    if os.path.isdir(path):
-        return path
-    else:
-        raise argparse.ArgumentTypeError(f"{path} is not a valid directory")
-
 def convert_stat_data(input_data):
     output_data = {}
     
@@ -185,7 +179,7 @@ def rank_fields_by_variance_and_mean_difference(data):
 # Main function to set up argument parsing and execute the script
 def main():
     parser = argparse.ArgumentParser(description='Analyze CS2 replays using demoparser')
-    parser.add_argument('folder', type=dir_path, help='Path to the folder containing .dem files')
+    parser.add_argument('folder', type=util.dir_path, help='Path to the folder containing .dem files')
     parser.add_argument('--players', type=str, nargs='*', default=[], help='List of player usernames to filter (empty for all players)')
     parser.add_argument('--fields', type=str, nargs='*', default=[], help='List of fields to analyze')
     parser.add_argument('--events', type=str, nargs='*', default=[], help='List of events to analyze')
