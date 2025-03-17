@@ -20,7 +20,6 @@ def get_files_with_extension(path, extension) -> List[str]:
     for root, dirs, files in os.walk(path):
         for file in files:
             if file.endswith(extension):
-                print(f"root: {root}, file: {file}")
                 results.append(os.path.normpath(os.path.join(root, file)))
     
     return results
@@ -98,6 +97,9 @@ def parse_players_from_ticks(ticks: pd.DataFrame) -> pd.DataFrame:
 
 def parse_maps_from_ticks(ticks: pd.DataFrame) -> pd.DataFrame:
     return ticks.drop_duplicates(subset=['map',])[['map']]
+
+def parse_matches_from_ticks(ticks: pd.DataFrame) -> pd.DataFrame:
+    return ticks.drop_duplicates(subset=['match',])[['match']]
 
 def file_path(path):
     if os.path.isfile(path):
