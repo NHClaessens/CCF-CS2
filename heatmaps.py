@@ -95,6 +95,7 @@ def generate_heatmap(player_name: str, map_name: str, match_name: str, df: pd.Da
     if args.save:
         os.makedirs(f"heatmaps/{match_name}", exist_ok=True)
         plt.savefig(f"heatmaps/{match_name}/{override_filename if override_filename else player_name}.png")
+    plt.close()
 
 
 
