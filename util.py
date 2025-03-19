@@ -1,16 +1,14 @@
 import os
 from typing import List
-
 import pandas as pd
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-
 from time import sleep
-
 from demoparser2 import DemoParser
 from progress.bar import Bar
-
 import argparse
+from tqdm import tqdm
+import numpy as np
 
 def get_files_with_extension(path, extension) -> List[str]:
     if not extension.startswith('.'):
@@ -113,3 +111,16 @@ def dir_path(path):
         return path
     else:
         raise argparse.ArgumentTypeError(f"{path} is not a valid directory")
+    
+def split_list_columns(df : pd.DataFrame) -> pd.DataFrame:
+    for col in tqdm(df.columns, desc="Splitting columns", total=len(df.columns)):
+        # Check if the column contains lists of length 2 or 3
+        if isinstance(df[col].iloc[0], list) or isinstance(df[col].iloc[0], np.ndarray) and len(df[col].iloc[0]) in [2, 3]:
+            # Create new columns based on the length of the list
+            if len(df[col].iloc[0]) == 3:
+                df[[f'{col}_X', f'{col}_Y', f'{col}_Z']] = pd.DataFrame(df[col].to_list(), index=df.index)
+            elif len(df[col].iloc[0]) == 2:
+                df[[f'{col}_X', f'{col}_Y']] = pd.DataFrame(df[col].to_list(), index=df.index)
+            # Drop the original list column
+            df = df.drop(columns=[col])
+    return df

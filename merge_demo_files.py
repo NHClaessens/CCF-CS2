@@ -7,7 +7,7 @@ from progress.bar import Bar
 import os
 import hashlib
 
-def merge_demo_files(folder_path : str, tick_props : List[str], save):
+def merge_demo_files(folder_path : str, tick_props : List[str], save = True):
     # 6eb9ecd9559f291023f8d80ed4545eefc1f51ac8
     input_hash = hashlib.sha1((folder_path + str(tick_props)).encode('utf-8')).hexdigest()
     stored_name = f'./stored_dfs/{input_hash}'
