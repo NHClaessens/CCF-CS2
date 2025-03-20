@@ -5,7 +5,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from time import sleep
 from demoparser2 import DemoParser
-from progress.bar import Bar
 import argparse
 from tqdm import tqdm
 import numpy as np
@@ -82,11 +81,9 @@ def parse_demos_from_folder(folder_path) -> List[tuple[str, DemoParser]]:
 
     parsers = []
 
-    with Bar("Parsing demo files", max=len(demo_files)) as bar:
-        for demo_file in demo_files:
-            name = os.path.basename(demo_file)
-            parsers.append((name, DemoParser(demo_file)))
-            bar.next()
+    for demo_file in tqdm(demo_files, desc="Parsing demo files", total=len(demo_files)):
+        name = os.path.basename(demo_file)
+        parsers.append((name, DemoParser(demo_file)))
     
     return parsers
 

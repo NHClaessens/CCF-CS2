@@ -3,9 +3,9 @@ from time import strftime, localtime
 from typing import List
 import util
 import pandas as pd
-from progress.bar import Bar
 import os
 import hashlib
+from tqdm import tqdm
 
 def merge_demo_files(folder_path : str, tick_props : List[str], save = True):
     # 6eb9ecd9559f291023f8d80ed4545eefc1f51ac8
@@ -27,18 +27,17 @@ def merge_demo_files(folder_path : str, tick_props : List[str], save = True):
     merged_ticks = pd.DataFrame()
     merged_events = []
 
-    with Bar("Merging demo files", max=len(parsers)) as bar:
-      for name, parser in parsers:
-          info = parser.parse_header()
-          ticks = parser.parse_ticks(wanted_props=tick_props)
-          ticks['match'] = name
-          ticks['map'] = info['map_name']
 
-          events = parser.parse_events(event_name=['all'])
+    for name, parser in tqdm(parsers, desc="Merging demo files", total=len(parsers)):
+        info = parser.parse_header()
+        ticks = parser.parse_ticks(wanted_props=tick_props)
+        ticks['match'] = name
+        ticks['map'] = info['map_name']
 
-          merged_ticks = pd.concat([merged_ticks, ticks], ignore_index=True)
-          merged_events += events
-          bar.next()
+        events = parser.parse_events(event_name=['all'])
+
+        merged_ticks = pd.concat([merged_ticks, ticks], ignore_index=True)
+        merged_events += events
 
     if save:
         print(f"Saving at: {stored_name}")

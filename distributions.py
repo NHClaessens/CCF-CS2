@@ -22,7 +22,14 @@ def main():
 
     args = parser.parse_args()
 
-    ticks, _ = merger.merge_demo_files(args.folder, ['aim_punch_angle', 'aim_punch_angle_vel'])
+    ticks, _ = merger.merge_demo_files(
+        folder_path=args.folder, 
+        tick_props=[
+            'aim_punch_angle', 
+            'aim_punch_angle_vel',
+            'duck_amount',
+        ],
+    )
     
     ticks = util.split_list_columns(ticks)
 
@@ -43,6 +50,15 @@ def main():
         filters={
             'aim_punch_angle_vel_X': lambda x: (x < -5 ) | (x > 5),
             'aim_punch_angle_vel_Y': lambda x: (x < -20) | (x > 20),
+        }
+    )
+
+    plot_distribution_by_player(
+        ticks, 
+        fields_of_interest=['duck_amount'], 
+        name="duck_amount",
+        filters={
+            'duck_amount': lambda x: x > 0.1
         }
     )
 
