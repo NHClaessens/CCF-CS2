@@ -1,11 +1,19 @@
 import argparse
-from typing import Callable, List
+from typing import Callable, List, Mapping
 from tqdm import tqdm
 import util
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import merge_demo_files as merger
+
+players_of_interest = [
+    "ZywOo",
+    "ropz",
+    "flameZ",
+    "mezii",
+    "apEX",
+]
 
 def main():
     parser = argparse.ArgumentParser(description='Generate heatmaps of player locations')
@@ -15,45 +23,36 @@ def main():
     args = parser.parse_args()
 
     ticks, _ = merger.merge_demo_files(args.folder, ['aim_punch_angle', 'aim_punch_angle_vel'])
-
-    ticks = filter_xyz_values(
-                ticks, 
-                'aim_punch_angle', 
-                x=lambda x: x < -0.5 or x > 0.5,
-                y=lambda y: y < -0.05 or y > 0.05,
-                z=lambda z: z < -0.5 or z > 0.5,
-            )
-    
-    ticks = filter_xyz_values(
-                ticks, 
-                'aim_punch_angle_vel', 
-                x=lambda x: x != 0,
-                y=lambda y: y != 0,
-                z=lambda z: False
-            )
     
     ticks = util.split_list_columns(ticks)
 
-    # plot_distribution_by_player(ticks, ['aim_punch_angle_X', 'aim_punch_angle_Y', 'aim_punch_angle_Z'])
-    plot_distribution_by_player(ticks, ['aim_punch_angle_vel_X', 'aim_punch_angle_vel_Y'])
+    plot_distribution_by_player(
+        ticks, 
+        fields_of_interest=['aim_punch_angle_X', 'aim_punch_angle_Y'], 
+        name="aiming_position",
+        filters={
+            'aim_punch_angle_X': lambda x: (x < -2) | (x > 2),
+            'aim_punch_angle_Y': lambda x: (x < -0.05) | (x > 0.05),
+        }
+    )
 
-def filter_xyz_values(df, column, x : Callable[[int], bool], y : Callable[[int], bool], z : Callable[[int], bool]):
-    # Check if all XYZ values in 'aim_punch_angle_vel' and 'aim_punch_angle' are smaller than 10
-    condition = df[column].apply(lambda e: x(e[0]) and y(e[1]) and z(e[2]))
+    plot_distribution_by_player(
+        ticks, 
+        fields_of_interest=['aim_punch_angle_vel_X', 'aim_punch_angle_vel_Y'], 
+        name="aiming_velocity",
+        filters={
+            'aim_punch_angle_vel_X': lambda x: (x < -5 ) | (x > 5),
+            'aim_punch_angle_vel_Y': lambda x: (x < -20) | (x > 20),
+        }
+    )
 
-    # Filter out rows where condition holds
-    filtered_df = df[~condition]
-
-    return filtered_df
-
-def plot_distribution_by_player(df : pd.DataFrame, fields_of_interest : List[str]):
+def plot_distribution_by_player(df : pd.DataFrame, fields_of_interest : List[str], name: str, filters: Mapping[str, Callable[[any], bool]] = {}):
     """
     Plots the distribution of given fields of interest, where each player gets a unique color.
     
     Args:
     - df (pd.DataFrame): The dataframe containing the game ticks data.
     - fields_of_interest (list or str): The columns to plot distributions for.
-    
     """
 
     # Ensure the specified fields exist in the dataframe
@@ -61,6 +60,10 @@ def plot_distribution_by_player(df : pd.DataFrame, fields_of_interest : List[str
     if missing_fields:
         print(f"Warning: The following fields are missing from the dataframe: {', '.join(missing_fields)}")
         return
+    
+    for column, condition in filters.items():
+        if column in df.columns:  # Only apply if the column exists in the DataFrame
+            df = df[condition(df[column])]
     
     # Set the plot style for better visualization
     sns.set_theme(style="whitegrid")
@@ -75,6 +78,8 @@ def plot_distribution_by_player(df : pd.DataFrame, fields_of_interest : List[str
     for field in tqdm(fields_of_interest, desc="Columns", total=len(fields_of_interest)):
         plt.subplot(len(fields_of_interest), 1, fields_of_interest.index(field) + 1)
         for player in tqdm(players, desc="Players", total=len(players)):
+            if player not in players_of_interest:
+                continue
             # Get data for the current player and field of interest
             player_data = df[df['name'] == player][field]
             
@@ -85,13 +90,14 @@ def plot_distribution_by_player(df : pd.DataFrame, fields_of_interest : List[str
         plt.title(f'Distribution of {field}')
         plt.xlabel(field)
         plt.ylabel('Density')
+        
+        plt.legend(title='Players', bbox_to_anchor=[1.05, 0.5], loc='center left')
 
     # Add a legend
-    plt.legend(title='Players', bbox_to_anchor=[1.05, -0.5], loc='center left')
+    plt.subplots_adjust(left=0.1, right=0.8, hspace=0.5)
 
-    # Display the plot
-    plt.tight_layout()
-    plt.show()
+    plt.savefig(f"./figures/{name}.png")
+
 
 if __name__ == '__main__':
     main()
