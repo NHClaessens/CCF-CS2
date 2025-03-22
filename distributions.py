@@ -45,9 +45,6 @@ def main():
 
         util.store_cache(ticks, [args.folder, tick_props])
 
-    print(f"Loaded {len(ticks)} ticks")
-    print(ticks.head())
-
     plot_distribution_by_player(
         ticks, 
         fields_of_interest=['aim_punch_angle_X', 'aim_punch_angle_Y'], 
