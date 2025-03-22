@@ -7,9 +7,9 @@ import os
 import hashlib
 from tqdm import tqdm
 
-def merge_demo_files(folder_path : str, tick_props : List[str], save = True):
-    # 6eb9ecd9559f291023f8d80ed4545eefc1f51ac8
-    input_hash = hashlib.sha1((folder_path + str(tick_props)).encode('utf-8')).hexdigest()
+# TODO: Filter by players of interest, as to not load all players into memory
+def merge_demo_files(folder_path : str, tick_props : List[str], save : bool = True, players_of_interest : List[str] = None):
+    input_hash = hashlib.sha1((folder_path + str(tick_props) + str(players_of_interest)).encode('utf-8')).hexdigest()
     stored_name = f'./stored_dfs/{input_hash}'
     if os.path.exists(stored_name):
         print("Found stored data")
@@ -31,6 +31,10 @@ def merge_demo_files(folder_path : str, tick_props : List[str], save = True):
     for name, parser in tqdm(parsers, desc="Merging demo files", total=len(parsers)):
         info = parser.parse_header()
         ticks = parser.parse_ticks(wanted_props=tick_props)
+
+        if players_of_interest is not None:
+            ticks = ticks[ticks['name'].isin(players_of_interest)]
+
         ticks['match'] = name
         ticks['map'] = info['map_name']
 
@@ -48,6 +52,7 @@ def merge_demo_files(folder_path : str, tick_props : List[str], save = True):
         with open(stored_name+'/info.txt', 'w') as file:
             file.write(f"""Created on: {strftime("%Y-%m-%d_%H-%M-%S", localtime())}
 Tick props: {str(tick_props)}
+Players of interest: {str(players_of_interest)}
 """)
   
     return merged_ticks, merged_events

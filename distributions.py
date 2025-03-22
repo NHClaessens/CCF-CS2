@@ -3,6 +3,9 @@ from typing import Callable, List, Mapping
 from tqdm import tqdm
 import util
 import pandas as pd
+import matplotlib
+matplotlib.use('wxAgg')
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 import merge_demo_files as merger
@@ -15,23 +18,35 @@ players_of_interest = [
     "apEX",
 ]
 
+tick_props = [
+    'aim_punch_angle', 
+    'aim_punch_angle_vel',
+    'duck_amount',
+]
+
 def main():
     parser = argparse.ArgumentParser(description='Generate heatmaps of player locations')
     parser.add_argument('folder', type=util.dir_path, help='Path to the folder containing .dem files')
     parser.add_argument('--players', type=str, nargs='*', default=[], help='List of player usernames to filter (empty for all players)')
+    parser.add_argument('--show', action='store_true', help='Show interactive plot instead of saving to file')
 
     args = parser.parse_args()
 
-    ticks, _ = merger.merge_demo_files(
-        folder_path=args.folder, 
-        tick_props=[
-            'aim_punch_angle', 
-            'aim_punch_angle_vel',
-            'duck_amount',
-        ],
-    )
+    ticks = util.load_cache([args.folder, tick_props])
+
+    if ticks is None:
+        ticks, _ = merger.merge_demo_files(
+            folder_path=args.folder, 
+            tick_props=tick_props,
+            players_of_interest=players_of_interest
+        )
     
-    ticks = util.split_list_columns(ticks)
+        ticks = util.split_list_columns(ticks)
+
+        util.store_cache(ticks, [args.folder, tick_props])
+
+    print(f"Loaded {len(ticks)} ticks")
+    print(ticks.head())
 
     plot_distribution_by_player(
         ticks, 
@@ -40,7 +55,8 @@ def main():
         filters={
             'aim_punch_angle_X': lambda x: (x < -2) | (x > 2),
             'aim_punch_angle_Y': lambda x: (x < -0.05) | (x > 0.05),
-        }
+        },
+        args=args,
     )
 
     plot_distribution_by_player(
@@ -50,7 +66,8 @@ def main():
         filters={
             'aim_punch_angle_vel_X': lambda x: (x < -5 ) | (x > 5),
             'aim_punch_angle_vel_Y': lambda x: (x < -20) | (x > 20),
-        }
+        },
+        args=args,
     )
 
     plot_distribution_by_player(
@@ -59,10 +76,17 @@ def main():
         name="duck_amount",
         filters={
             'duck_amount': lambda x: x > 0.1
-        }
+        },
+        args=args,
     )
 
-def plot_distribution_by_player(df : pd.DataFrame, fields_of_interest : List[str], name: str, filters: Mapping[str, Callable[[any], bool]] = {}):
+def plot_distribution_by_player(
+        df : pd.DataFrame, 
+        fields_of_interest : List[str], 
+        name: str,
+        args: argparse.Namespace,
+        filters: Mapping[str, Callable[[any], bool]] = {}
+    ):
     """
     Plots the distribution of given fields of interest, where each player gets a unique color.
     
@@ -112,7 +136,10 @@ def plot_distribution_by_player(df : pd.DataFrame, fields_of_interest : List[str
     # Add a legend
     plt.subplots_adjust(left=0.1, right=0.8, hspace=0.5)
 
-    plt.savefig(f"./figures/{name}.png")
+    if args.show:
+        plt.show()
+    else:
+        plt.savefig(f"./figures/{name}.png")
 
 
 if __name__ == '__main__':

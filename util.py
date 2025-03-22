@@ -1,4 +1,6 @@
+import hashlib
 import os
+import pickle
 from typing import List
 import pandas as pd
 from selenium.webdriver.support.ui import WebDriverWait
@@ -109,15 +111,56 @@ def dir_path(path):
     else:
         raise argparse.ArgumentTypeError(f"{path} is not a valid directory")
     
-def split_list_columns(df : pd.DataFrame) -> pd.DataFrame:
+def split_list_columns(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.dropna().copy()  # Drop None/NaN rows and avoid modifying original DataFrame
+
     for col in tqdm(df.columns, desc="Splitting columns", total=len(df.columns)):
-        # Check if the column contains lists of length 2 or 3
-        if isinstance(df[col].iloc[0], list) or isinstance(df[col].iloc[0], np.ndarray) and len(df[col].iloc[0]) in [2, 3]:
-            # Create new columns based on the length of the list
-            if len(df[col].iloc[0]) == 3:
-                df[[f'{col}_X', f'{col}_Y', f'{col}_Z']] = pd.DataFrame(df[col].to_list(), index=df.index)
-            elif len(df[col].iloc[0]) == 2:
-                df[[f'{col}_X', f'{col}_Y']] = pd.DataFrame(df[col].to_list(), index=df.index)
-            # Drop the original list column
-            df = df.drop(columns=[col])
+        valid_rows = df[col].notna()
+        if valid_rows.any():  # Ensure there are valid rows to process
+            first_valid = df.loc[valid_rows, col].iloc[0]
+            
+            if isinstance(first_valid, (list, np.ndarray)) and len(first_valid) in [2, 3]:
+                # Convert list column to DataFrame and assign directly
+                expanded_df = pd.DataFrame(df.loc[valid_rows, col].to_list(), index=df.index[valid_rows])
+                expanded_df.columns = [f"{col}_X", f"{col}_Y"] if len(first_valid) == 2 else [f"{col}_X", f"{col}_Y", f"{col}_Z"]
+
+                df = df.drop(columns=[col])  # Drop original column
+                df = df.join(expanded_df)  # Join expanded columns back
+        
+        print(f"After {col}: {df.head()}")  # Debugging step
+
     return df
+
+# def split_list_columns(df: pd.DataFrame) -> pd.DataFrame:
+#     for col in tqdm(df.columns, desc="Splitting columns", total=len(df.columns)):
+#         print(f"Processing column {col}")
+#         # Check if the column contains lists of length 2 or 3
+#         if isinstance(df[col].iloc[0], list) or isinstance(df[col].iloc[0], np.ndarray):
+#             # Filter out rows where the column contains None or NaN
+#             valid_rows = df[col].notna()
+#             if valid_rows.any():  # Ensure there are valid rows to process
+
+#                 if len(df[col].iloc[0]) == 3:
+#                     df.loc[valid_rows, [f'{col}_X', f'{col}_Y', f'{col}_Z']] = pd.DataFrame(df[col].to_list(), index=df.index)
+#                 elif len(df[col].iloc[0]) == 2:
+#                     df.loc[valid_rows, [f'{col}_X', f'{col}_Y']] = pd.DataFrame(df[col].to_list(), index=df.index)
+#             # Drop the original list column
+#             df = df.drop(columns=[col])
+#     return df
+
+def store_cache(data, args):
+    input_hash = hashlib.sha1((str(args)).encode('utf-8')).hexdigest()
+    stored_name = f'./cache/{input_hash}.pkl'
+    print(f"Storing to cache {input_hash}, with args {str(args)}")
+
+    os.makedirs('./cache', exist_ok=True)
+    pickle.dump(data, open(stored_name, 'wb'))
+
+def load_cache(args):
+    input_hash = hashlib.sha1((str(args)).encode('utf-8')).hexdigest()
+    stored_name = f'./cache/{input_hash}.pkl'
+    if os.path.exists(stored_name):
+        print(f"Found stored data in cache {input_hash}, for args {str(args)}")
+        return pickle.load(open(stored_name, 'rb'))
+    
+    return None
