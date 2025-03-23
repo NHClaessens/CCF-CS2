@@ -12,7 +12,7 @@ def merge_demo_files(folder_path : str, tick_props : List[str], save : bool = Tr
     input_hash = hashlib.sha1((folder_path + str(tick_props) + str(players_of_interest) + str(limit) if limit else "").encode('utf-8')).hexdigest()
     stored_name = f'./stored_dfs/{input_hash}'
     if os.path.exists(stored_name):
-        print("Found stored data")
+        print(f"Found stored data in: {input_hash}")
         merged_ticks = pd.read_feather(stored_name+'/merged_ticks')
         with open(stored_name+'/merged_events.pkl', 'rb') as file:
             merged_events = pickle.load(file)
