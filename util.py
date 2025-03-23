@@ -76,16 +76,21 @@ def monitor_folder_for_changes(folder_path):
             break
 
 
-def parse_demos_from_folder(folder_path) -> List[tuple[str, DemoParser]]:
+def parse_demos_from_folder(folder_path, limit: int = None) -> List[tuple[str, DemoParser]]:
     # Find all .dem files in the folder
     demo_files = get_files_with_extension(folder_path, '.dem')
     print(f"Found {len(demo_files)} demo files")
 
     parsers = []
 
-    for demo_file in tqdm(demo_files, desc="Parsing demo files", total=len(demo_files)):
+    for demo_file in tqdm(demo_files, desc="Parsing demo files", total=limit if limit else len(demo_files)):
+        if limit and len(parsers) >= limit:
+            break
+        
+        parent_folder_name = os.path.basename(os.path.dirname(demo_file))
         name = os.path.basename(demo_file)
-        parsers.append((name, DemoParser(demo_file)))
+        parsers.append((f"{parent_folder_name}_{name}", DemoParser(demo_file)))
+
     
     return parsers
 

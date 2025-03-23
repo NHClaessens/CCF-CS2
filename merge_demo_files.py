@@ -8,8 +8,8 @@ import hashlib
 from tqdm import tqdm
 
 # TODO: Filter by players of interest, as to not load all players into memory
-def merge_demo_files(folder_path : str, tick_props : List[str], save : bool = True, players_of_interest : List[str] = None):
-    input_hash = hashlib.sha1((folder_path + str(tick_props) + str(players_of_interest)).encode('utf-8')).hexdigest()
+def merge_demo_files(folder_path : str, tick_props : List[str], save : bool = True, players_of_interest : List[str] = None, limit: int = None):
+    input_hash = hashlib.sha1((folder_path + str(tick_props) + str(players_of_interest) + str(limit) if limit else "").encode('utf-8')).hexdigest()
     stored_name = f'./stored_dfs/{input_hash}'
     if os.path.exists(stored_name):
         print("Found stored data")
@@ -21,7 +21,7 @@ def merge_demo_files(folder_path : str, tick_props : List[str], save : bool = Tr
         return merged_ticks, merged_events
 
     # Parse all demo files in the folder
-    parsers = util.parse_demos_from_folder(folder_path)
+    parsers = util.parse_demos_from_folder(folder_path, limit=limit)
 
     # Merge the demo files
     merged_ticks = pd.DataFrame()

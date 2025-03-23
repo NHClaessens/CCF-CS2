@@ -2,27 +2,34 @@ import os
 import merge_demo_files as merger
 import argparse
 import util
+import matplotlib
+matplotlib.use('Agg')
+# Silence warning related to max amount of figures open at once
+matplotlib.rcParams['figure.max_open_warning'] = 0 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import seaborn as sns
 import pandas as pd
 from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+players_of_interest = [
+    "ZywOo",
+    "ropz",
+    "flameZ",
+    "mezii",
+    "apEX",
+]
 
 def main():
     parser = argparse.ArgumentParser(description='Generate heatmaps of player locations')
     parser.add_argument('folder', type=util.dir_path, help='Path to the folder containing .dem files')
-    parser.add_argument('--players', type=str, nargs='*', default=[], help='List of player usernames to filter (empty for all players)')
-    parser.add_argument('--show', action='store_true', help="Show the plots in an interactive window")
-    parser.add_argument('--save', action='store_true', help="Save the plots to disk")
-    parser.add_argument('--map', type=str, help="Only create heatmaps for this map")
     parser.add_argument('--min_vel', type=float, help="The minimum velocity to show in the heatmap. Ticks with velocity lower than this will not be shown")
 
     args = parser.parse_args()
 
-    ticks, _ = merger.merge_demo_files(args.folder, ['X', 'Y', 'Z', 'velocity'], True)
+    ticks, _ = merger.merge_demo_files(args.folder, ['X', 'Y', 'Z', 'velocity'], True, limit=10, players_of_interest=players_of_interest)
     matches = util.parse_matches_from_ticks(ticks)
-
-    # TODO: filter based on walking or standing still
 
     print("Generating heatmaps")
     # Generate heatmaps per round
@@ -34,13 +41,11 @@ def main():
         maps = util.parse_maps_from_ticks(match_df)
         map_name = maps['map'].tolist()[0]
 
-        print(f"Match: {match}, map: {map_name}, players: {players['name'].tolist()}")
+        print(f"\nMatch: {match}, map: {map_name}, players: {players['name'].tolist()}")
         
         # Generate per player
         for _, data in tqdm(players.iterrows(), desc="Players", total=len(players),):
             player_name = data['name']
-            if len(args.players) > 0 and player_name not in args.players:
-                continue
 
             map_df = match_df[match_df["map"] == map_name]
             player_df = map_df[map_df["name"] == player_name]
@@ -56,14 +61,14 @@ def main():
                 save_filename=player_name,
             )
         
-        # Generate average heatmap for match
-        generate_heatmap(
-            df=match_df, 
-            map_name= map_name,
-            title="Heatmap of everyone's Positions",
-            save_path=match,
-            save_filename="average",
-        )
+        # # Generate average heatmap for match
+        # generate_heatmap(
+        #     df=match_df, 
+        #     map_name= map_name,
+        #     title="Heatmap of everyone's Positions",
+        #     save_path=match,
+        #     save_filename="average",
+        # )
 
 
 def generate_heatmap(df: pd.DataFrame, map_name: str, title: str, save_path: str, save_filename: str):
