@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 # TODO: Filter by players of interest, as to not load all players into memory
 def merge_demo_files(folder_path : str, tick_props : List[str], save : bool = True, players_of_interest : List[str] = None, limit: int = None):
-    input_hash = hashlib.sha1((folder_path + str(tick_props) + str(players_of_interest) + str(limit) if limit else "").encode('utf-8')).hexdigest()
+    input_hash = hashlib.sha1((folder_path + str(tick_props) + str(players_of_interest) + (str(limit) if limit else "")).encode('utf-8')).hexdigest()
     stored_name = f'./stored_dfs/{input_hash}'
     if os.path.exists(stored_name):
         print(f"Found stored data in: {input_hash}")

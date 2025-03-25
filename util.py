@@ -83,7 +83,7 @@ def parse_demos_from_folder(folder_path, limit: int = None) -> List[tuple[str, D
 
     parsers = []
 
-    for demo_file in tqdm(demo_files, desc="Parsing demo files", total=limit if limit else len(demo_files)):
+    for demo_file in tqdm(demo_files, desc="Parsing demo files", total=limit if (limit and limit > len(demo_files)) else len(demo_files)):
         if limit and len(parsers) >= limit:
             break
         
@@ -132,8 +132,6 @@ def split_list_columns(df: pd.DataFrame) -> pd.DataFrame:
                 df = df.drop(columns=[col])  # Drop original column
                 df = df.join(expanded_df)  # Join expanded columns back
         
-        print(f"After {col}: {df.head()}")  # Debugging step
-
     return df
 
 # def split_list_columns(df: pd.DataFrame) -> pd.DataFrame:
