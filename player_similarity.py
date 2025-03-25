@@ -16,40 +16,6 @@ tick_props = [
     'yaw',
 ]
 
-def normalize_features(features: pd.DataFrame, method: str = 'zscore') -> pd.DataFrame:
-    """
-    Normalizes features using the specified method (Min-Max or Z-score).
-    """
-    if method == 'minmax':
-        scaler = MinMaxScaler()
-    elif method == 'zscore':
-        scaler = StandardScaler()
-    else:
-        raise ValueError("Unsupported normalization method. Use 'minmax' or 'zscore'.")
-    
-    return pd.DataFrame(scaler.fit_transform(features), columns=features.columns)
-
-def compute_heatmap_similarity(new_heatmap: np.ndarray, known_heatmap: np.ndarray) -> float:
-    """
-    Computes similarity between two heatmaps using Jensen-Shannon divergence.
-    """
-    # Flatten the heatmaps to 1-D arrays
-    new_heatmap = new_heatmap.flatten()
-    known_heatmap = known_heatmap.flatten()
-
-    # Normalize the heatmaps to sum to 1
-    if np.sum(new_heatmap) == 0 or np.sum(known_heatmap) == 0:
-        return 0  # Return 0 similarity if either heatmap is empty
-    new_heatmap = new_heatmap / np.sum(new_heatmap)
-    known_heatmap = known_heatmap / np.sum(known_heatmap)
-
-    # Compute Jensen-Shannon divergence
-    m = (new_heatmap + known_heatmap) / 2
-    js_divergence = 0.5 * (entropy(new_heatmap, m, base=2) + entropy(known_heatmap, m, base=2))
-
-    # Convert divergence to similarity
-    return 1 - js_divergence
-
 def filter_player_and_map(ticks: pd.DataFrame, player_name: str, map_name: str) -> pd.DataFrame:
     """
     Filter df to only include rows where `name == <player_name>` and `map == <map_name>`.
@@ -58,6 +24,17 @@ def filter_player_and_map(ticks: pd.DataFrame, player_name: str, map_name: str) 
     return player_ticks
 
 def compute_similarity(new_features: pd.DataFrame, known_features: pd.DataFrame) -> float:
+    """
+    Computes a confidence score based on multiple similarity metrics.
+    """
+    return (
+        compute_cursor_similarity(new_features, known_features)
+        # TODO: add more metrics here
+        # such as heatmap, crouching/jumping, weapon usage, etc.
+    ) / 1
+    
+
+def compute_cursor_similarity(new_features: pd.DataFrame, known_features: pd.DataFrame) -> float:
     """
     Computes a confidence score based on multiple similarity metrics.
     """
