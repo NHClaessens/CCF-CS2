@@ -37,7 +37,7 @@ def compute_derivatives(df: pd.DataFrame, props: List[str]) -> pd.DataFrame:
     # Split by player to compute derivatives independently
     player_groups = df.groupby('name')
     
-    for player, player_data in tqdm(player_groups, desc="Computing Derivatives", total=len(player_groups)):
+    for player, player_data in tqdm(player_groups, desc="Computing Derivatives", total=len(player_groups), leave=False):
         for prop in props:
             player_data[f'{prop}_speed'] = player_data[prop].diff()  # First derivative - speed
             player_data[f'{prop}_acceleration'] = player_data[f'{prop}_speed'].diff()  # Second derivative - acceleration
@@ -110,6 +110,19 @@ def main():
         )
 
         util.store_cache(ticks, [args.folder, args.limit, tick_props])
+
+
+    player1 = ticks[(ticks['name'] == 'ZywOo') & (ticks['map'] == 'de_mirage')]
+    player2 = ticks[(ticks['name'] == 'ropz') & (ticks['map'] == 'de_mirage')]
+
+    corr_pitch = np.corrcoef(player1['pitch'], player2['pitch'])[0, 1]
+    corr_yaw = np.corrcoef(player1['yaw'], player2['yaw'])[0, 1]
+    print(f"Correlation between ZywOo and ropz on pitch: {corr_pitch}")
+    print(f"Correlation between ZywOo and ropz on yaw: {corr_yaw}")
+
+
+
+    return
 
     # Compute speed, acceleration, and smoothness for each player
     ticks = compute_derivatives(ticks, ['yaw', 'pitch'])
