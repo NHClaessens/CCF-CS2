@@ -83,7 +83,11 @@ def parse_demos_from_folder(folder_path, limit: int = None) -> List[tuple[str, D
 
     parsers = []
 
-    for demo_file in tqdm(demo_files, desc="Parsing demo files", total=limit if (limit and limit > len(demo_files)) else len(demo_files)):
+    total = len(demo_files)
+    if limit and limit < total:
+        total = limit
+        
+    for demo_file in tqdm(demo_files, desc="Parsing demo files", total=total):
         if limit and len(parsers) >= limit:
             break
         

@@ -19,9 +19,8 @@ players_of_interest = [
 ]
 
 tick_props = [
-    'aim_punch_angle', 
-    'aim_punch_angle_vel',
-    'duck_amount',
+    'pitch', 
+    'yaw', 
 ]
 
 import merge_demo_files as merger
@@ -32,21 +31,24 @@ def main():
     parser.add_argument('folder', type=util.dir_path, help='Path to the folder containing .dem files')
     parser.add_argument('--players', type=str, nargs='*', default=[], help='List of player usernames to filter (empty for all players)')
     parser.add_argument('--show', action='store_true', help='Show interactive plot instead of saving to file')
+    parser.add_argument('--limit', type=int, default=None, help='Limit the number of demo files to process')
+
 
     args = parser.parse_args()
 
-    ticks = util.load_cache([args.folder, tick_props])
+    ticks = util.load_cache([args.folder, args.limit, tick_props])
 
     if ticks is None:
         ticks, _ = merger.merge_demo_files(
             folder_path=args.folder, 
             tick_props=tick_props,
-            players_of_interest=players_of_interest
+            players_of_interest=players_of_interest,
+            limit=args.limit
         )
     
-        ticks = util.split_list_columns(ticks)
+        # ticks = util.split_list_columns(ticks)
 
-        util.store_cache(ticks, [args.folder, tick_props])
+        util.store_cache(ticks, [args.folder, args.limit, tick_props])
 
     maps = util.parse_maps_from_ticks(ticks)
 
@@ -57,8 +59,8 @@ def main():
               df=map_ticks, 
               player_name=player, 
               figure_name=f"{player}_{map_name}_aim_scatter",
-              x='aim_punch_angle_X',
-              y='aim_punch_angle_Y',
+              x='yaw',
+              y='pitch',
               title=f"Aiming Scatter Plot for {player} on {map_name}",
               xlim=(-50, 10),
           )
