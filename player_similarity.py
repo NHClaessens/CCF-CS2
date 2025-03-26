@@ -10,6 +10,8 @@ import merge_demo_files as merger
 import argparse
 from scipy.spatial.distance import jensenshannon
 from cursor_movement import compute_derivatives
+from scipy.stats import wasserstein_distance
+
 
 tick_props = [
     'pitch',
@@ -41,21 +43,14 @@ def compute_cursor_similarity(new_features: pd.DataFrame, known_features: pd.Dat
     new_features = compute_derivatives(new_features, ['yaw', 'pitch'])
     known_features = compute_derivatives(known_features, ['yaw', 'pitch'])
 
-    yaw_speed_1, _ = np.histogram(new_features['yaw_speed'], bins=50, density=True)
-    yaw_speed_2, _ = np.histogram(known_features['yaw_speed'], bins=50, density=True)
+    y1 = wasserstein_distance(new_features['yaw_speed'], known_features['yaw_speed'])
+    y2 = wasserstein_distance(new_features['yaw_acceleration'], known_features['yaw_acceleration'])
+    y3 = wasserstein_distance(new_features['yaw_smoothness'], known_features['yaw_smoothness'])
 
-    yaw_speed_jsd = jensenshannon(yaw_speed_1, yaw_speed_2)
-
-    yaw_acceleration_1, _ = np.histogram(new_features['yaw_acceleration'], bins=50, density=True)
-    yaw_acceleration_2, _ = np.histogram(known_features['yaw_acceleration'], bins=50, density=True)
-
-    yaw_acceleration_jsd = jensenshannon(yaw_acceleration_1, yaw_acceleration_2)
-
-    yaw_smoothness_1, _ = np.histogram(new_features['yaw_smoothness'], bins=50, density=True)
-    yaw_smoothness_2, _ = np.histogram(known_features['yaw_smoothness'], bins=50, density=True)
-
-    yaw_smoothness_jsd = jensenshannon(yaw_smoothness_1, yaw_smoothness_2)
-    return (yaw_speed_jsd + yaw_acceleration_jsd + yaw_smoothness_jsd) / 3
+    p1 = wasserstein_distance(new_features['pitch_speed'], known_features['pitch_speed'])
+    p2 = wasserstein_distance(new_features['pitch_acceleration'], known_features['pitch_acceleration'])
+    p3 = wasserstein_distance(new_features['pitch_smoothness'], known_features['pitch_smoothness'])
+    return 1 - (y1 + y2 + y3 + p1 + p2 + p3) / 6
 
 
 
