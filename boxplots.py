@@ -49,12 +49,12 @@ def plot_boolean_boxplot(data, field):
     :param field: The boolean field being analyzed
     """
     plt.figure(figsize=(12, 6))
-    sns.boxplot(x='name', y='fraction_active', data=data)
+    sns.boxplot(x='name', y='fraction_active', data=data, color='#ff7f0e')
     
     # Labels and title
     plt.xlabel("Player Name")
     plt.ylabel(f"Fraction of Time Spent {field.capitalize()}")
-    plt.title(f"{field.capitalize()} Behavior Across Matches")
+    plt.title(f"{field.capitalize()} Fraction Across Matches")
     
     plt.tight_layout()
     
@@ -68,7 +68,7 @@ def main():
     parser = argparse.ArgumentParser(description='Analyze player behavior based on boolean fields')
     parser.add_argument('folder', type=util.dir_path, help='Path to the folder containing .dem files')
     parser.add_argument('field', type=str, help='Boolean field to analyze (e.g., ducking, jumping)')
-    parser.add_argument('--count', '-c', type=int, default=None, help='Limit the number of demo files to process')
+    parser.add_argument('--limit', type=int, default=None, help='Limit the number of demo files to process')
     
     args = parser.parse_args()
 
@@ -78,7 +78,7 @@ def main():
       tick_props=[args.field, 'match', 'name'], 
       save=True, 
       players_of_interest=players_of_interest,
-      limit=args.count
+      limit=args.limit
     )
 
     # Compute fractions for the given field

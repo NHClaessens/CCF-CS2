@@ -45,7 +45,8 @@ def compute_similarity(new_features: pd.DataFrame, known_features: pd.DataFrame)
     Computes a confidence score based on multiple similarity metrics.
     """
     return (
-        compute_cursor_similarity_jensenshannon(new_features, known_features)
+        compute_location_similarity_wasserstein(new_features, known_features) 
+        # compute_cursor_similarity_jensenshannon(new_features, known_features)
         # TODO: add more metrics here
         # such as heatmap, crouching/jumping, weapon usage, etc.
     ) / 1
@@ -105,6 +106,37 @@ def compute_cursor_similarity_wasserstein(new_features: pd.DataFrame, known_feat
     p2 = wasserstein_distance(new_features['pitch_acceleration'], known_features['pitch_acceleration'])
     p3 = wasserstein_distance(new_features['pitch_smoothness'], known_features['pitch_smoothness'])
     return 1 - (y1 + y2 + y3 + p1 + p2 + p3) / 6
+
+def compute_location_similarity_jensenshannon(new_features: pd.DataFrame, known_features: pd.DataFrame) -> float:
+    """
+    Computes a confidence score based on multiple similarity metrics.
+    """
+    x1, _ = np.histogram(new_features['X'], bins=50, density=True)
+    x2, _ = np.histogram(known_features['X'], bins=50, density=True)
+
+    x_jsd = jensenshannon(x1, x2)
+
+    y1, _ = np.histogram(new_features['Y'], bins=50, density=True)
+    y2, _ = np.histogram(known_features['Y'], bins=50, density=True)
+
+    y_jsd = jensenshannon(y1, y2)
+
+    return 1 - (x_jsd + y_jsd) / 2
+
+def compute_location_similarity_wasserstein(new_features: pd.DataFrame, known_features: pd.DataFrame) -> float:
+    """
+    Computes a confidence score based on multiple similarity metrics, normalized to [0, 1].
+    """
+    x1 = wasserstein_distance(new_features['X'], known_features['X'])
+    y1 = wasserstein_distance(new_features['Y'], known_features['Y'])
+    
+    # Normalize the distances to [0, 1] using a max possible distance (e.g., domain knowledge or a large constant)
+    max_distance = 1200  # Adjust this value based on the expected range of X and Y
+    normalized_x1 = min(x1 / max_distance, 1.0)
+    normalized_y1 = min(y1 / max_distance, 1.0)
+    
+    # Compute similarity as 1 - normalized average distance
+    return 1 - (normalized_x1 + normalized_y1) / 2
 
 def evaluate_players(new_ticks: pd.DataFrame, known_ticks: pd.DataFrame, players: list, map_name: str):
     """
@@ -168,24 +200,45 @@ def plot_similarity_results():
             }
     """
     results = [
+        # Cursor results
+        # {
+        #     "label": "Janson-Shannon",
+        #     "avg_self": 0.4534,
+        #     "min_self": 0.3276,
+        #     "max_self": 0.6264,
+        #     "avg_other": 0.4927,
+        #     "min_other": 0.2364,
+        #     "max_other": 0.9702,
+        # },
+        # {
+        #     "label": "Wasserstein",
+        #     "avg_self": 0.9348,
+        #     "min_self": 0.8272,
+        #     "max_self": 0.9927,
+        #     "avg_other": 0.8476,
+        #     "min_other": 0.2843,
+        #     "max_other": 0.9850,
+        # }
+
+        # Location results
         {
-            "label": "Jensen-Shannon",
-            "avg_self": 0.4534,
-            "min_self": 0.3276,
-            "max_self": 0.6264,
-            "avg_other": 0.4927,
-            "min_other": 0.2364,
-            "max_other": 0.9702,
+            "label": "Janson-Shannon",
+            "avg_self": 0.7747,
+            "min_self": 0.6580,
+            "max_self": 0.8150,
+            "avg_other": 0.6637,
+            "min_other": 0.1193,
+            "max_other": 0.8143,
         },
-        {
-            "label": "Wasserstein",
-            "avg_self": 0.9348,
-            "min_self": 0.8272,
-            "max_self": 0.9927,
-            "avg_other": 0.8476,
-            "min_other": 0.2843,
-            "max_other": 0.9850,
-        }
+        # {
+        #     "label": "Wasserstein",
+        #     "avg_self": 0.7282,
+        #     "min_self": 0.6691,
+        #     "max_self": 0.7924,
+        #     "avg_other": 0.6032,
+        #     "min_other": 0.0455,
+        #     "max_other": 0.9291,
+        # }
     ]
     categories = ["Avg Self", "Min Self", "Max Self", "Avg Other", "Min Other", "Max Other"]
     num_categories = len(categories)
@@ -194,7 +247,9 @@ def plot_similarity_results():
     x = np.arange(num_categories)  # X-axis positions for each category
     bar_width = 0.8 / num_datasets  # Adjust width dynamically
 
-    colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#7f7f7f"]  # Blue, Orange, Green, Red, Purple, Gray
+    colors = [
+        "#1f77b4", 
+        "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#7f7f7f"]  # Blue, Orange, Green, Red, Purple, Gray
 
     fig, ax = plt.subplots(figsize=(10 + num_datasets, 6))
 
@@ -216,7 +271,7 @@ def plot_similarity_results():
     ax.set_ylim(0, 1)  # Assuming similarity scores are between 0 and 1
 
     # plt.show()
-    plt.savefig("./figures/player_similarity_evaluation.png", dpi=300)
+    plt.savefig("./figures/player_location_similarity_evaluation_js.png", dpi=300)
 
 def main():
     parser = argparse.ArgumentParser(description='Compute player similarity between new and known demo files.')
