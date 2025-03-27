@@ -24,11 +24,12 @@ players_of_interest = [
 def main():
     parser = argparse.ArgumentParser(description='Generate heatmaps of player locations')
     parser.add_argument('folder', type=util.dir_path, help='Path to the folder containing .dem files')
+    parser.add_argument('--limit', type=int, default=None, help='Limit the number of demo files to process')
     parser.add_argument('--min_vel', type=float, help="The minimum velocity to show in the heatmap. Ticks with velocity lower than this will not be shown")
 
     args = parser.parse_args()
 
-    ticks, _ = merger.merge_demo_files(args.folder, ['X', 'Y', 'Z', 'velocity'], True, limit=10, players_of_interest=players_of_interest)
+    ticks, _ = merger.merge_demo_files(args.folder, ['X', 'Y', 'Z', 'velocity'], True, players_of_interest=players_of_interest, limit=args.limit)
     matches = util.parse_matches_from_ticks(ticks)
 
     print("Generating heatmaps")
@@ -85,7 +86,10 @@ def generate_heatmap(df: pd.DataFrame, map_name: str, title: str, save_path: str
         thresh=0.05, 
         levels=100,
         ax=ax,
-        zorder=1
+        zorder=1,
+        bw_adjust=0.5,
+        # gridsize=100,
+        # thresh=0.05,
     )
 
     map_path = f'./maps/{map_name}.jpg'
