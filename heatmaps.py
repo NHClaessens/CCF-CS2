@@ -26,10 +26,12 @@ def main():
     parser.add_argument('folder', type=util.dir_path, help='Path to the folder containing .dem files')
     parser.add_argument('--limit', type=int, default=None, help='Limit the number of demo files to process')
     parser.add_argument('--min_vel', type=float, help="The minimum velocity to show in the heatmap. Ticks with velocity lower than this will not be shown")
+    parser.add_argument('--map', type=str, help="The map of interest, all other maps will be ignored")
+    parser.add_argument('--player', type=str, help="The player of interest, all other players will be ignored")
 
     args = parser.parse_args()
 
-    ticks, _ = merger.merge_demo_files(args.folder, ['X', 'Y', 'Z', 'velocity'], True, players_of_interest=players_of_interest, limit=args.limit)
+    ticks, _ = merger.merge_demo_files(args.folder, ['X', 'Y', 'Z', 'velocity'], True, players_of_interest=players_of_interest, limit=args.limit, map_name=args.map)
     matches = util.parse_matches_from_ticks(ticks)
 
     print("Generating heatmaps")
@@ -43,6 +45,9 @@ def main():
         map_name = maps['map'].tolist()[0]
 
         print(f"\nMatch: {match}, map: {map_name}, players: {players['name'].tolist()}")
+
+        if args.player:
+            players = players[players['name'] == args.player]
         
         # Generate per player
         for _, data in tqdm(players.iterrows(), desc="Players", total=len(players),):
@@ -59,7 +64,7 @@ def main():
                 map_name= map_name,
                 title=f"Heatmap of {player_name}'s Positions",
                 save_path=match,
-                save_filename=player_name,
+                save_filename=player_name + "_detailed",
             )
         
         # # Generate average heatmap for match

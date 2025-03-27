@@ -45,7 +45,7 @@ def compute_similarity(new_features: pd.DataFrame, known_features: pd.DataFrame)
     Computes a confidence score based on multiple similarity metrics.
     """
     return (
-        compute_cursor_similarity_wasserstein(new_features, known_features)
+        compute_cursor_similarity_jensenshannon(new_features, known_features)
         # TODO: add more metrics here
         # such as heatmap, crouching/jumping, weapon usage, etc.
     ) / 1
